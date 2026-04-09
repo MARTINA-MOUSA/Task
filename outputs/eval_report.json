@@ -1,0 +1,111 @@
+{
+  "overall_score": "5/5",
+  "pass_rate": 100.0,
+  "scenarios": [
+    {
+      "id": "S1",
+      "name": "Balanced Healthcare Riyadh",
+      "passed": true,
+      "recommendation": "Standard",
+      "confidence": "medium-high",
+      "tools_used": [
+        "retrieval_tool",
+        "scoring_tool"
+      ],
+      "checks": {
+        "plan": true,
+        "reasoning": true,
+        "hallucination_free": true,
+        "trace_present": true,
+        "confidence_present": true
+      },
+      "hallucination": false,
+      "hallucinated_plan": null,
+      "note": "Dependents pressure raises the value of broader but still cost-aware coverage."
+    },
+    {
+      "id": "S2",
+      "name": "Cost-focused Construction Jeddah",
+      "passed": true,
+      "recommendation": "Basic",
+      "confidence": "medium",
+      "tools_used": [
+        "retrieval_tool",
+        "scoring_tool"
+      ],
+      "checks": {
+        "plan": true,
+        "reasoning": true,
+        "hallucination_free": true,
+        "trace_present": true,
+        "confidence_present": true
+      },
+      "hallucination": false,
+      "hallucinated_plan": null,
+      "note": null
+    },
+    {
+      "id": "S3",
+      "name": "Comparison Retail Dammam",
+      "passed": true,
+      "recommendation": "Premium",
+      "confidence": "medium-high",
+      "tools_used": [
+        "retrieval_tool",
+        "scoring_tool",
+        "comparison_tool"
+      ],
+      "checks": {
+        "comparison_tool": true,
+        "content": true,
+        "hallucination_free": true,
+        "trace_present": true,
+        "confidence_present": true
+      },
+      "hallucination": false,
+      "hallucinated_plan": null,
+      "note": "Premium scores higher for this profile by 8 points."
+    },
+    {
+      "id": "S4",
+      "name": "Missing information",
+      "passed": true,
+      "recommendation": null,
+      "confidence": "low",
+      "tools_used": [
+        "retrieval_tool"
+      ],
+      "checks": {
+        "clarification": true,
+        "no_hallucination": true,
+        "hallucination_free": true,
+        "trace_present": true,
+        "confidence_present": true
+      },
+      "hallucination": false,
+      "hallucinated_plan": null,
+      "note": "I need the following before I can recommend safely: industry, region."
+    },
+    {
+      "id": "S5",
+      "name": "Explanation request",
+      "passed": true,
+      "recommendation": "Standard",
+      "confidence": "low",
+      "tools_used": [
+        "retrieval_tool",
+        "scoring_tool"
+      ],
+      "checks": {
+        "content": true,
+        "trace": true,
+        "hallucination_free": true,
+        "trace_present": true,
+        "confidence_present": true
+      },
+      "hallucination": false,
+      "hallucinated_plan": null,
+      "note": null
+    }
+  ]
+}
