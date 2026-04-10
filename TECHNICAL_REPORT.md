@@ -15,6 +15,9 @@ The shared state object is central to the design. Each node reads from and write
 
 Conditional routing logic is handled by graph edges instead of ad hoc branching scattered across the codebase. That makes the workflow easier to debug, safer to extend, and easier to evaluate under both visible and hidden test cases.
 
+## Section 1.1 - Agent/Runtime Design
+The runtime follows a graph-based, stateful execution model. The planner interprets the request and selects the required tools, retrieval grounds the request against the embedded knowledge base, scoring applies deterministic business rules, comparison or fallback handles conditional branching, and the composer synthesizes the final structured output. This design keeps orchestration explicit, makes state transitions auditable, and separates decision logic from final answer generation.
+
 ## ARCHITECTURE_DIAGRAM
 ```text
 User Request
