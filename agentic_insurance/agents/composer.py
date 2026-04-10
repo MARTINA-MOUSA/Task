@@ -33,7 +33,11 @@ class ComposerNode:
         state["fallback_or_risk_note"] = output.fallback_or_risk_note
         state["reasoning"] = output.reasoning
         state["tools_used"] = output.tools_used
-        state["plan"] = output.plan.get("steps", state.get("plan", [])) if isinstance(output.plan, dict) else state.get("plan", [])
+        state["plan"] = (
+            output.plan.get("steps", state.get("plan", []))
+            if isinstance(output.plan, dict)
+            else state.get("plan", [])
+        )
         trace_step(state, "composer: completed")
         state["final_output"] = output.model_copy(
             update={"execution_trace": state.get("execution_trace", [])}
@@ -86,7 +90,7 @@ class ComposerNode:
             reasoning = list(state.get("reasoning", [])) or [state["clarification_question"]]
             return AgentOutput(
                 user_request=state["user_request"],
-                plan={"steps": state.get("plan", [])},
+                plan={"steps": self._final_plan_steps(state)},
                 tools_used=unique_tools(state.get("tools_used", [])),
                 recommendation=None,
                 reasoning=reasoning,
@@ -98,7 +102,7 @@ class ComposerNode:
         if state.get("error") and "unsupported" in (state["error"].lower()):
             return AgentOutput(
                 user_request=state["user_request"],
-                plan={"steps": state.get("plan", [])},
+                plan={"steps": self._final_plan_steps(state)},
                 tools_used=unique_tools(state.get("tools_used", [])),
                 recommendation=None,
                 reasoning=["The request is outside the supported dataset."],
@@ -142,7 +146,7 @@ class ComposerNode:
 
         return AgentOutput(
             user_request=state["user_request"],
-            plan={"steps": state.get("plan", [])},
+            plan={"steps": self._final_plan_steps(state)},
             tools_used=unique_tools(state.get("tools_used", [])),
             recommendation=Recommendation.model_validate(recommendation) if recommendation else None,
             reasoning=reasoning,
@@ -172,3 +176,15 @@ class ComposerNode:
                 seen.add(normalized)
                 deduped.append(normalized)
         return deduped
+
+    def _final_plan_steps(self, state: AgentState) -> list[str]:
+        steps = ["extract supported insurance attributes"]
+        if "retrieval_tool" in state.get("tools_used", []) or state.get("retrieved_data"):
+            steps.append("retrieve matching customer and package data")
+        if "scoring_tool" in state.get("tools_used", []) and state.get("scoring_result"):
+            steps.append("score candidate packages deterministically")
+        if "comparison_tool" in state.get("tools_used", []) and state.get("comparison_result"):
+            steps.append("compare the requested plans side by side")
+        if state.get("needs_clarification") or state.get("error"):
+            steps.append("return a safe fallback response")
+        return steps

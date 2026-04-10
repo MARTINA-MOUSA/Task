@@ -22,7 +22,6 @@ class AgentState(TypedDict, total=False):
     fallback_or_risk_note: Optional[str]
     error: Optional[str]
     retry_count: int
-    trace_seq: int
     final_output: Optional[dict[str, Any]]
 
 
@@ -43,14 +42,12 @@ def build_initial_state(user_request: str) -> AgentState:
         fallback_or_risk_note=None,
         error=None,
         retry_count=0,
-        trace_seq=0,
         final_output=None,
     )
 
 
 def trace_step(state: AgentState, message: str) -> AgentState:
-    seq = int(state.get("trace_seq", 0)) + 1
-    state["trace_seq"] = seq
+    seq = len(state.get("execution_trace", [])) + 1
     timestamp = datetime.now(timezone.utc).strftime("%H:%M:%S")
     state.setdefault("execution_trace", []).append(f"{seq:02d}@{timestamp} {message}")
     return state
