@@ -61,6 +61,8 @@ Tradeoffs remain. LangGraph introduces a learning curve, and graph-based systems
 ## Section 3 - Model Selection Justification
 The system is configured to use `gpt-5.4` as the only LLM model for both planning and final composition. This keeps deployment simple, reduces configuration drift, and guarantees that both model-driven steps operate on the same capability level.
 
+gpt-4o-mini is appropriate here as prompts are small and the dataset is limited - context length is not a constraint.
+
 The scoring layer is intentionally deterministic Python rather than an LLM. Insurance recommendation logic needs to be predictable, auditable, and easy to test. Deterministic scoring eliminates hallucination risk in the decision layer, makes tradeoffs explicit, and removes token cost from repeated ranking operations.
 
 Using an LLM in every step would increase cost, latency, and unpredictability. It would also make debugging harder because reasoning would be implicit inside model outputs instead of encoded in transparent business rules.
@@ -77,7 +79,7 @@ Evaluation is implemented with a custom evaluation harness rather than an extern
 
 The evaluation suite now covers both visible and hidden scenarios:
 - 5 visible scenarios for balanced recommendation, cost-focused recommendation, comparison mode, missing-information fallback, and explanation mode
-- 5 hidden-style scenarios for conflicting constraints, unsupported requests, ambiguous wording, partial retrieval behavior, and invalid comparison targets
+- 8 hidden-style scenarios (H1-H8) for conflicting constraints, unsupported requests, ambiguous wording, partial retrieval behavior, invalid comparison targets, tool failure, overconfidence checks, and repeated-call guards
 
 Edge cases for tool failure, model overconfidence, and repeated tool calls are covered as auxiliary unit checks in `_run_auxiliary_checks()` rather than full end-to-end scenarios, since they require direct tool injection to trigger reliably. This design separates integration-level scenario testing from unit-level tool behavior validation, ensuring both layers are independently measurable.
 
