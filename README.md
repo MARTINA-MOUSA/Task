@@ -99,6 +99,7 @@ python harness.py
 - Added: hidden edge-case scenarios
 - Added: checks for unsupported requests, confidence guards, duplicate tool use, fallback-after-tool-issue, and retry traces
 - Added: `visible_score`, `hidden_score`, `failed_checks_count`, and richer per-scenario metrics in `outputs/eval_report.json`
+- Added: auxiliary unit checks for tool failure, overconfidence, planner-step discipline, and repeated tool calls without progress
 
 **Configuration**
 - Unified LLM configuration to use `OPENAI_MODEL=gpt-5.4` only
@@ -109,7 +110,8 @@ python harness.py
 - `harness.py`: root-level evaluation runner
 
 ## Evaluation Results
-- `overall_score`: `10/10`
+- `overall_score`: `13/13`
 - `pass_rate`: `100.0%`
 - `visible_score`: `5/5`
-- `hidden_score`: `5/5`
+- `hidden_score`: `8/8`
+- `auxiliary_checks_score`: `4/4`

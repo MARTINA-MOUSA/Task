@@ -61,9 +61,9 @@ Tradeoffs remain. LangGraph introduces a learning curve, and graph-based systems
 ## Section 3 - Model Selection Justification
 The system is configured to use `gpt-5.4` as the only LLM model for both planning and final composition. This keeps deployment simple, reduces configuration drift, and guarantees that both model-driven steps operate on the same capability level.
 
-gpt-4o-mini is appropriate here as prompts are small and the dataset is limited - context length is not a constraint.
-
 The scoring layer is intentionally deterministic Python rather than an LLM. Insurance recommendation logic needs to be predictable, auditable, and easy to test. Deterministic scoring eliminates hallucination risk in the decision layer, makes tradeoffs explicit, and removes token cost from repeated ranking operations.
+
+`gpt-5.4` is appropriate here because prompts are small, the dataset is limited, and context length is not a practical constraint in this workflow.
 
 Using an LLM in every step would increase cost, latency, and unpredictability. It would also make debugging harder because reasoning would be implicit inside model outputs instead of encoded in transparent business rules.
 
