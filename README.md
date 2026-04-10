@@ -109,9 +109,3 @@ python harness.py
 - `README.md`: setup and usage guide
 - `harness.py`: root-level evaluation runner
 
-## Evaluation Results
-- `overall_score`: `13/13`
-- `pass_rate`: `100.0%`
-- `visible_score`: `5/5`
-- `hidden_score`: `8/8`
-- `auxiliary_checks_score`: `4/4`
