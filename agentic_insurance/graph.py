@@ -19,6 +19,19 @@ def planner(state: AgentState) -> AgentState:
     return planner_node(state)
 
 
+def planner_check(state: AgentState) -> str:
+    planner_data = (state.get("retrieved_data") or {}).get("planner", {})
+    tools_needed = planner_data.get("tools_needed", [])
+    if state.get("error"):
+        trace_step(state, "planner check: routing to fallback because error is set")
+        return "fallback"
+    if not tools_needed:
+        trace_step(state, "planner check: routing to fallback because no tools were selected")
+        return "fallback"
+    trace_step(state, f"planner check: continuing with tools {', '.join(tools_needed)}")
+    return "retrieval"
+
+
 def retrieval(state: AgentState) -> AgentState:
     trace_step(state, "retrieval node: started")
     if state.get("error"):
@@ -186,7 +199,14 @@ def build_graph():
     workflow.add_node("compose", compose)
 
     workflow.add_edge(START, "planner")
-    workflow.add_edge("planner", "retrieval")
+    workflow.add_conditional_edges(
+        "planner",
+        planner_check,
+        {
+            "retrieval": "retrieval",
+            "fallback": "fallback",
+        },
+    )
     workflow.add_edge("retrieval", "scoring")
     workflow.add_conditional_edges(
         "scoring",

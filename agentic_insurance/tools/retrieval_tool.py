@@ -45,29 +45,29 @@ def _find_keyword(text: str, mapping: dict[str, str]) -> str | None:
     return None
 
 
-def _closest_customer(industry: str | None, region: str | None) -> tuple[str | None, dict[str, Any] | None]:
+def _closest_customer(industry: str | None, region: str | None) -> tuple[str | None, dict[str, Any] | None, str]:
     if industry and region:
         for customer_id, profile in CUSTOMERS.items():
             if profile["industry"] == industry and profile["region"] == region:
-                return customer_id, deepcopy(profile)
+                return customer_id, deepcopy(profile), "exact industry+region match"
     if industry:
         for customer_id, profile in CUSTOMERS.items():
             if profile["industry"] == industry:
-                return customer_id, deepcopy(profile)
+                return customer_id, deepcopy(profile), "industry-only relaxed match"
     if region:
         for customer_id, profile in CUSTOMERS.items():
             if profile["region"] == region:
-                return customer_id, deepcopy(profile)
-    return None, None
+                return customer_id, deepcopy(profile), "region-only relaxed match"
+    return None, None, "no candidate customer matched"
 
 
-def _strict_customer_match(industry: str | None, region: str | None) -> tuple[str | None, dict[str, Any] | None]:
+def _strict_customer_match(industry: str | None, region: str | None) -> tuple[str | None, dict[str, Any] | None, str]:
     if not industry or not region or "unknown" in {industry, region}:
-        return None, None
+        return None, None, "strict match unavailable because critical fields are missing"
     for customer_id, profile in CUSTOMERS.items():
         if profile["industry"] == industry and profile["region"] == region:
-            return customer_id, deepcopy(profile)
-    return None, None
+            return customer_id, deepcopy(profile), "strict industry+region match"
+    return None, None, "strict industry+region match not found"
 
 
 def _candidate_packages(budget: str | None) -> list[dict[str, Any]]:
@@ -113,14 +113,19 @@ def _build_payload(
     )
 
     if relaxed:
-        customer_id, customer_profile = _closest_customer(industry, region)
+        customer_id, customer_profile, retrieval_reason = _closest_customer(industry, region)
+        match_quality = "relaxed" if customer_profile else "none"
     else:
-        customer_id, customer_profile = _strict_customer_match(industry, region)
+        customer_id, customer_profile, retrieval_reason = _strict_customer_match(industry, region)
+        match_quality = "strict" if customer_profile else "none"
     candidate_packages = _candidate_packages(budget)
 
     if query_type == "explanation":
         customer_profile = customer_profile or {}
         candidate_packages = [{"plan_name": name, **deepcopy(data)} for name, data in PACKAGES.items()]
+        if not customer_id:
+            retrieval_reason = "explanation mode uses package knowledge even without a customer match"
+            match_quality = "knowledge_only"
 
     return {
         "query": query,
@@ -134,6 +139,8 @@ def _build_payload(
         },
         "matched_customer_id": customer_id,
         "customer_profile": customer_profile or {},
+        "match_quality": match_quality,
+        "retrieval_reason": retrieval_reason,
         "candidate_packages": candidate_packages,
         "rules": deepcopy(RULES),
         "supported_industries": list(INDUSTRY_MAP.values()),
@@ -171,7 +178,15 @@ def retrieval_tool(query: str, state: AgentState) -> dict[str, Any]:
             f"{payload['matched_customer_id']} for "
             f"{payload['customer_profile']['industry']} in {payload['customer_profile']['region']}",
         )
+        trace_step(
+            state,
+            f"retrieval_tool: match_quality={payload.get('match_quality')} reason={payload.get('retrieval_reason')}",
+        )
     else:
-        trace_step(state, "retrieval_tool: no customer profile matched, using candidate package set only")
+        trace_step(
+            state,
+            "retrieval_tool: no customer profile matched, using candidate package set only "
+            f"(match_quality={payload.get('match_quality')}, reason={payload.get('retrieval_reason')})",
+        )
     trace_step(state, f"retrieval_tool: returned {len(payload.get('candidate_packages', []))} candidate packages")
     return payload

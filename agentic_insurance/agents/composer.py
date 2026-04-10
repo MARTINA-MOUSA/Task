@@ -68,6 +68,7 @@ class ComposerNode:
         retrieved = state.get("retrieved_data") or {}
         scoring = state.get("scoring_result") or {}
         comparison = state.get("comparison_result") or {}
+        query_type = ((retrieved.get("planner") or {}).get("extracted") or {}).get("query_type", "recommendation")
         recommendation = state.get("recommendation")
         if recommendation is None and scoring.get("recommendation"):
             recommendation = scoring["recommendation"]
@@ -107,17 +108,37 @@ class ComposerNode:
             )
 
         reasoning = list(state.get("reasoning", []))
+        if retrieved.get("match_quality"):
+            reasoning.append(
+                f"Retrieval quality: {retrieved.get('match_quality')} ({retrieved.get('retrieval_reason', 'no retrieval note')})."
+            )
         if retrieved.get("customer_profile"):
             customer = retrieved["customer_profile"]
             reasoning.append(
                 f"Customer profile: {customer.get('industry', 'unknown')} in {customer.get('region', 'unknown')}."
             )
+        if scoring.get("recommendation_reason"):
+            reasoning.append(scoring["recommendation_reason"])
+        if comparison.get("business_summary"):
+            reasoning.append(comparison["business_summary"])
+        if comparison.get("recommendation_reason"):
+            reasoning.append(comparison["recommendation_reason"])
 
         if not reasoning:
             reasoning = [
                 "The recommendation was derived from deterministic package scoring.",
                 "Industry risk, region cost pressure, budget fit, and dependents pressure were considered.",
             ]
+        reasoning = self._dedupe_reasoning(reasoning)
+
+        if query_type == "comparison":
+            fallback_note = comparison.get("business_summary") or state.get("fallback_or_risk_note") or scoring.get("risk_note")
+        elif state.get("needs_clarification"):
+            fallback_note = state.get("clarification_question")
+        elif query_type == "explanation":
+            fallback_note = state.get("fallback_or_risk_note") or "Explanation generated from the latest deterministic scoring state."
+        else:
+            fallback_note = state.get("fallback_or_risk_note") or scoring.get("risk_note")
 
         return AgentOutput(
             user_request=state["user_request"],
@@ -127,7 +148,7 @@ class ComposerNode:
             reasoning=reasoning,
             confidence=state.get("confidence", "medium"),
             execution_trace=state.get("execution_trace", []),
-            fallback_or_risk_note=state.get("fallback_or_risk_note") or scoring.get("risk_note"),
+            fallback_or_risk_note=fallback_note,
         )
 
     def _json_safe_state(self, state: AgentState) -> dict:
@@ -141,3 +162,13 @@ class ComposerNode:
                     item["price_range"] = list(item["price_range"])
             safe["scoring_result"] = scoring
         return safe
+
+    def _dedupe_reasoning(self, reasoning: list[str]) -> list[str]:
+        seen: set[str] = set()
+        deduped: list[str] = []
+        for item in reasoning:
+            normalized = item.strip()
+            if normalized and normalized not in seen:
+                seen.add(normalized)
+                deduped.append(normalized)
+        return deduped

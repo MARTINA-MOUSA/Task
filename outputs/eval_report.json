@@ -1,6 +1,55 @@
 {
-  "overall_score": "5/5",
+  "overall_score": "10/10",
   "pass_rate": 100.0,
+  "visible_score": "5/5",
+  "hidden_score": "5/5",
+  "auxiliary_checks_score": "4/4",
+  "auxiliary_checks": [
+    {
+      "name": "tool_failure_or_empty_result",
+      "passed": true,
+      "details": {
+        "confidence": "low",
+        "flags": [
+          "empty_candidates"
+        ]
+      }
+    },
+    {
+      "name": "model_overconfidence_guard",
+      "passed": true,
+      "details": {
+        "recommendation": {
+          "plan_name": "Standard",
+          "network": "B",
+          "price_range": [
+            6000,
+            7500
+          ]
+        },
+        "confidence": "medium"
+      }
+    },
+    {
+      "name": "planner_unnecessary_steps_guard",
+      "passed": true,
+      "details": {
+        "unsupported_tools": [],
+        "focused_tools": [
+          "retrieval_tool",
+          "scoring_tool"
+        ]
+      }
+    },
+    {
+      "name": "repeated_tool_calls_without_improvement_guard",
+      "passed": true,
+      "details": {
+        "error": "Repeated tool calls without progress.",
+        "retry_count": 3
+      }
+    }
+  ],
   "scenarios": [
     {
       "id": "S1",
@@ -15,12 +64,17 @@
       "checks": {
         "plan": true,
         "reasoning": true,
+        "no_unnecessary_duplicate_tools": true,
         "hallucination_free": true,
         "trace_present": true,
         "confidence_present": true
       },
+      "failed_checks_count": 0,
+      "failed_checks": [],
+      "retry_trace_seen": false,
       "hallucination": false,
       "hallucinated_plan": null,
+      "comparison_plan_names": [],
       "note": "Dependents pressure raises the value of broader but still cost-aware coverage."
     },
     {
@@ -36,12 +90,17 @@
       "checks": {
         "plan": true,
         "reasoning": true,
+        "no_unnecessary_duplicate_tools": true,
         "hallucination_free": true,
         "trace_present": true,
         "confidence_present": true
       },
+      "failed_checks_count": 0,
+      "failed_checks": [],
+      "retry_trace_seen": false,
       "hallucination": false,
       "hallucinated_plan": null,
+      "comparison_plan_names": [],
       "note": null
     },
     {
@@ -58,13 +117,24 @@
       "checks": {
         "comparison_tool": true,
         "content": true,
+        "no_unnecessary_duplicate_tools": true,
         "hallucination_free": true,
         "trace_present": true,
         "confidence_present": true
       },
+      "failed_checks_count": 0,
+      "failed_checks": [],
+      "retry_trace_seen": false,
       "hallucination": false,
       "hallucinated_plan": null,
-      "note": "Premium scores higher for this profile by 8 points."
+      "comparison_plan_names": [
+        "Standard",
+        "Premium",
+        "Standard",
+        "Premium",
+        "Premium"
+      ],
+      "note": "Premium is the better tradeoff because it balances coverage breadth better than Standard for this profile."
     },
     {
       "id": "S4",
@@ -78,19 +148,24 @@
       "checks": {
         "clarification": true,
         "no_hallucination": true,
+        "no_unnecessary_duplicate_tools": true,
         "hallucination_free": true,
         "trace_present": true,
         "confidence_present": true
       },
+      "failed_checks_count": 0,
+      "failed_checks": [],
+      "retry_trace_seen": true,
       "hallucination": false,
       "hallucinated_plan": null,
+      "comparison_plan_names": [],
       "note": "I need the following before I can recommend safely: industry, region."
     },
     {
       "id": "S5",
       "name": "Explanation request",
       "passed": true,
-      "recommendation": "Standard",
+      "recommendation": "Premium",
       "confidence": "low",
       "tools_used": [
         "retrieval_tool",
@@ -99,13 +174,146 @@
       "checks": {
         "content": true,
         "trace": true,
+        "no_unnecessary_duplicate_tools": true,
         "hallucination_free": true,
         "trace_present": true,
         "confidence_present": true
       },
+      "failed_checks_count": 0,
+      "failed_checks": [],
+      "retry_trace_seen": false,
       "hallucination": false,
       "hallucinated_plan": null,
-      "note": null
+      "comparison_plan_names": [],
+      "note": "Explanation generated from the latest deterministic scoring state."
+    },
+    {
+      "id": "H1",
+      "name": "Conflicting constraints",
+      "passed": true,
+      "recommendation": "Standard",
+      "confidence": "medium",
+      "tools_used": [
+        "retrieval_tool",
+        "scoring_tool"
+      ],
+      "checks": {
+        "plan": true,
+        "reasoning": true,
+        "confidence_guard": true,
+        "no_unnecessary_duplicate_tools": true,
+        "hallucination_free": true,
+        "trace_present": true,
+        "confidence_present": true
+      },
+      "failed_checks_count": 0,
+      "failed_checks": [],
+      "retry_trace_seen": false,
+      "hallucination": false,
+      "hallucinated_plan": null,
+      "comparison_plan_names": [],
+      "note": "Low budget conflicts with best-coverage intent, so Standard is the safest compromise."
+    },
+    {
+      "id": "H2",
+      "name": "Unsupported request",
+      "passed": true,
+      "recommendation": null,
+      "confidence": "low",
+      "tools_used": [],
+      "checks": {
+        "unsupported_fallback": true,
+        "no_hallucination": true,
+        "no_unnecessary_duplicate_tools": true,
+        "hallucination_free": true,
+        "trace_present": true,
+        "confidence_present": true
+      },
+      "failed_checks_count": 0,
+      "failed_checks": [],
+      "retry_trace_seen": false,
+      "hallucination": false,
+      "hallucinated_plan": null,
+      "comparison_plan_names": [],
+      "note": "I cannot answer this with available data."
+    },
+    {
+      "id": "H3",
+      "name": "Ambiguous wording",
+      "passed": true,
+      "recommendation": null,
+      "confidence": "low",
+      "tools_used": [
+        "retrieval_tool"
+      ],
+      "checks": {
+        "clarification": true,
+        "no_hallucination": true,
+        "no_unnecessary_duplicate_tools": true,
+        "hallucination_free": true,
+        "trace_present": true,
+        "confidence_present": true
+      },
+      "failed_checks_count": 0,
+      "failed_checks": [],
+      "retry_trace_seen": true,
+      "hallucination": false,
+      "hallucinated_plan": null,
+      "comparison_plan_names": [],
+      "note": "I need the following before I can recommend safely: industry, region."
+    },
+    {
+      "id": "H4",
+      "name": "Partial retrieval retry",
+      "passed": true,
+      "recommendation": null,
+      "confidence": "low",
+      "tools_used": [
+        "retrieval_tool",
+        "scoring_tool"
+      ],
+      "checks": {
+        "content": true,
+        "clarification": true,
+        "retry_trace": true,
+        "no_unnecessary_duplicate_tools": true,
+        "hallucination_free": true,
+        "trace_present": true,
+        "confidence_present": true
+      },
+      "failed_checks_count": 0,
+      "failed_checks": [],
+      "retry_trace_seen": true,
+      "hallucination": false,
+      "hallucinated_plan": null,
+      "comparison_plan_names": [],
+      "note": "I need the following before I can recommend safely: region."
+    },
+    {
+      "id": "H5",
+      "name": "Invalid comparison target",
+      "passed": true,
+      "recommendation": null,
+      "confidence": "low",
+      "tools_used": [
+        "retrieval_tool",
+        "scoring_tool"
+      ],
+      "checks": {
+        "fallback_after_tool_issue": true,
+        "no_hallucination": true,
+        "no_unnecessary_duplicate_tools": true,
+        "hallucination_free": true,
+        "trace_present": true,
+        "confidence_present": true
+      },
+      "failed_checks_count": 0,
+      "failed_checks": [],
+      "retry_trace_seen": false,
+      "hallucination": false,
+      "hallucinated_plan": null,
+      "comparison_plan_names": [],
+      "note": "The request is ambiguous. Please specify the company industry, region, and budget."
     }
   ]
 }

@@ -29,6 +29,12 @@ def comparison_tool(package_a: str, package_b: str, customer_profile: dict[str, 
     left = next(item for item in ranked if item["plan_name"] == package_a)
     right = next(item for item in ranked if item["plan_name"] == package_b)
     recommended = left if left["score"] >= right["score"] else right
+    other = right if recommended["plan_name"] == left["plan_name"] else left
+    business_summary = (
+        f"{recommended['plan_name']} is the better tradeoff because it balances "
+        f"{'coverage breadth' if recommended['plan_name'] != 'Basic' else 'cost control'} "
+        f"better than {other['plan_name']} for this profile."
+    )
 
     return {
         "comparison_of": [package_a, package_b],
@@ -62,6 +68,6 @@ def comparison_tool(package_a: str, package_b: str, customer_profile: dict[str, 
         "recommendation_reason": (
             f"{recommended['plan_name']} scores higher for this profile by {abs(left['score'] - right['score'])} points."
         ),
+        "business_summary": business_summary,
         "score_gap": abs(left["score"] - right["score"]),
     }
-

@@ -16,24 +16,23 @@ graph.py (LangGraph orchestration)
     v
 [planner]
     |
-    v
-[retrieval]
-    |
-    v
-[scoring]
-    |
     +-------------------+
     |                   |
     v                   v
-[comparison]       [fallback]
+[retrieval]        [fallback]
     |                   |
+    v                   |
+[scoring]               |
+    |                   |
+    +-------------------+
+    |                   |
+    v                   v
+[comparison]       [composer]
+    |                   ^
     +---------+---------+
               |
               v
-          [composer]
-              |
-              v
-         JSON Output
+          JSON Output
 ```
 
 ## Setup
@@ -71,24 +70,38 @@ python harness.py
 - `outputs/eval_report.json` for evaluation summaries
 
 ## Changelog
-### v1.1.0 - 2026-04-10
+### v1.2.0 - 2026-04-10
+**planner.py / graph.py**
+- Added: planner gating to skip unnecessary downstream steps when fallback is already known
+- Added: explicit planner trace messages for selected tools
+- Improved: heuristic handling for ambiguous wording, unsupported intents, and invalid comparison targets
+
 **retrieval_tool.py**
-- Added: retry logic with relaxed matching on empty results
-- Added: fallback routing on second failure
-- Added: execution_trace logging for retry attempts
+- Added: strict-to-relaxed retry logic on empty retrieval
+- Added: `match_quality` and `retrieval_reason` metadata
+- Added: richer retrieval trace logging for partial or relaxed matches
 
 **scoring_tool.py**
-- Added: conflicting constraints detection (low budget + best coverage)
-- Added: explicit tradeoff reasoning in output
-- Changed: confidence set to `medium` on conflict
+- Added: conflicting constraints handling for low-budget + best-coverage requests
+- Added: explicit tradeoff reasoning for cost-focused and coverage-focused scenarios
+- Added: narrow-gap confidence moderation to reduce overconfidence
+- Added: top-plan score breakdown in reasoning output
 
-**harness.py**
-- Added: hallucination detection check on `plan_name`
-- Added: hallucination flag in `outputs/eval_report.json`
-- Added: persisted evaluation report output under `outputs/`
+**comparison_tool.py**
+- Added: business-friendly comparison summary in addition to raw score-gap reasoning
+
+**composer.py**
+- Added: reasoning deduplication
+- Added: retrieval-quality and comparison-summary synthesis in final responses
+- Improved: mode-aware fallback and explanation notes
+
+**harness.py / evaluation**
+- Added: hidden edge-case scenarios
+- Added: checks for unsupported requests, confidence guards, duplicate tool use, fallback-after-tool-issue, and retry traces
+- Added: `visible_score`, `hidden_score`, `failed_checks_count`, and richer per-scenario metrics in `outputs/eval_report.json`
 
 **Configuration**
-- Changed: unified LLM configuration to use `OPENAI_MODEL=gpt-5.4` only
+- Unified LLM configuration to use `OPENAI_MODEL=gpt-5.4` only
 
 **New Files**
 - `TECHNICAL_REPORT.md`: full system documentation
@@ -96,5 +109,7 @@ python harness.py
 - `harness.py`: root-level evaluation runner
 
 ## Evaluation Results
-- `overall_score`: `5/5`
+- `overall_score`: `10/10`
 - `pass_rate`: `100.0%`
+- `visible_score`: `5/5`
+- `hidden_score`: `5/5`

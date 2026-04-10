@@ -55,19 +55,18 @@ class PlannerNode:
             state.setdefault("fallback_or_risk_note", "I cannot answer this with available data.")
 
         state.setdefault("retrieved_data", {})["planner"] = parsed.model_dump()
-        state["plan"] = [
-            "extract supported insurance attributes",
-            "retrieve matching customer and package data",
-            "score candidate packages deterministically",
-        ]
-        if "comparison_tool" in parsed.tools_needed:
-            state["plan"].append("compare the requested plans side by side")
+        state["plan"] = self._build_plan_steps(parsed.tools_needed)
         state["reasoning"] = parsed.reasoning or [
             f"Extracted industry={parsed.extracted.industry}, region={parsed.extracted.region}, budget={parsed.extracted.budget}, priority={parsed.extracted.priority}.",
         ]
         state["needs_clarification"] = parsed.needs_clarification
         state["clarification_question"] = parsed.clarification_question
         state.setdefault("tools_used", [])
+        trace_step(
+            state,
+            "planner: selected tools "
+            + (", ".join(parsed.tools_needed) if parsed.tools_needed else "none"),
+        )
         trace_step(state, "planner: completed")
         return state
 
@@ -93,6 +92,10 @@ class PlannerNode:
 
     def _heuristic_plan(self, user_request: str) -> PlannerPlan:
         lowered = user_request.lower()
+        unsupported_intent = any(
+            token in lowered
+            for token in ("weather", "temperature", "tomorrow", "forecast", "stock price", "traffic")
+        )
         supported_signals = any(
             token in lowered
             for token in (
@@ -111,6 +114,9 @@ class PlannerNode:
                 "coverage",
                 "cheapest",
                 "best coverage",
+                "affordable",
+                "strong",
+                "company",
             )
         )
 
@@ -122,16 +128,19 @@ class PlannerNode:
 
         industry = _pick({"healthcare": "Healthcare", "construction": "Construction", "retail": "Retail"})
         region = _pick({"riyadh": "Riyadh", "jeddah": "Jeddah", "dammam": "Dammam"})
-        if "cheap" in lowered or "cheapest" in lowered or "low budget" in lowered:
+        if "cheap" in lowered or "cheapest" in lowered or "low budget" in lowered or "affordable" in lowered:
             budget = "Low"
-        elif "best coverage" in lowered or "premium" in lowered:
+        elif "best coverage" in lowered or "premium" in lowered or "top coverage" in lowered:
             budget = "High"
         elif any(word in lowered for word in ("balanced", "moderate", "medium")):
             budget = "Medium"
         else:
             budget = "unknown"
 
-        if "compare" in lowered:
+        if unsupported_intent:
+            query_type = "unknown"
+            priority = "unknown"
+        elif "compare" in lowered or "vs" in lowered:
             query_type = "comparison"
             priority = "comparison"
         elif "why" in lowered or "explain" in lowered:
@@ -146,19 +155,30 @@ class PlannerNode:
         elif "balanced" in lowered:
             query_type = "recommendation"
             priority = "balanced"
+        elif any(word in lowered for word in ("best", "recommend", "option")):
+            query_type = "recommendation"
+            priority = "balanced" if budget == "unknown" else "unknown"
         else:
             query_type = "unknown" if not supported_signals else "recommendation"
             priority = "unknown"
 
         compare_plans = [plan for plan in ("Basic", "Standard", "Premium") if plan.lower() in lowered]
+        compare_requires_clarification = query_type == "comparison" and len(compare_plans) < 2
         needs_clarification = query_type != "explanation" and query_type != "unknown" and (
             industry == "unknown" or region == "unknown"
         )
+        if compare_requires_clarification:
+            needs_clarification = True
         clarification_question = None
         if needs_clarification:
-            clarification_question = "Could you share the company industry and region so I can recommend safely?"
+            if compare_requires_clarification:
+                clarification_question = "Please specify two valid plan names to compare: Basic, Standard, or Premium."
+            else:
+                clarification_question = "Could you share the company industry and region so I can recommend safely?"
 
-        tools_needed = ["retrieval_tool", "scoring_tool"]
+        tools_needed = ["retrieval_tool"]
+        if query_type in {"recommendation", "comparison", "explanation"}:
+            tools_needed.append("scoring_tool")
         if query_type == "comparison":
             tools_needed.append("comparison_tool")
         if query_type == "unknown":
@@ -179,5 +199,18 @@ class PlannerNode:
             reasoning=[
                 f"Detected query type {query_type}.",
                 f"Extracted industry={industry}, region={region}, budget={budget}, priority={priority}.",
+                f"Selected tools: {', '.join(tools_needed) if tools_needed else 'none'}.",
             ],
         )
+
+    def _build_plan_steps(self, tools_needed: list[str]) -> list[str]:
+        steps = ["extract supported insurance attributes"]
+        if "retrieval_tool" in tools_needed:
+            steps.append("retrieve matching customer and package data")
+        if "scoring_tool" in tools_needed:
+            steps.append("score candidate packages deterministically")
+        if "comparison_tool" in tools_needed:
+            steps.append("compare the requested plans side by side")
+        if not tools_needed:
+            steps.append("return a safe fallback response")
+        return steps

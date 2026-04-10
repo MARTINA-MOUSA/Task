@@ -103,6 +103,8 @@ def _confidence_for_gap(best: int, second: int | None, has_missing_data: bool) -
     gap = (best - second) if second is not None else best
     if has_missing_data:
         return "low"
+    if second is not None and gap <= 3:
+        return "medium"
     if best >= 125 and gap >= 12:
         return "high"
     if best >= 105 and gap >= 8:
@@ -143,6 +145,7 @@ def scoring_tool(candidates: list[dict[str, Any]], customer_profile: dict[str, A
     ranked.sort(key=lambda item: item["score"], reverse=True)
     top = ranked[0]
     second = ranked[1]["score"] if len(ranked) > 1 else None
+    gap = (top["score"] - second) if second is not None else top["score"]
 
     budget = customer_profile.get("budget", "Medium")
     priority = customer_profile.get("priority", "balanced")
@@ -159,6 +162,11 @@ def scoring_tool(candidates: list[dict[str, Any]], customer_profile: dict[str, A
     if conflicting_constraints:
         risk_flags.append("budget_priority_conflict")
         reasoning.append("Conflicting constraints detected: low budget overrides best coverage preference")
+        reasoning.append("Tradeoff applied: Standard is preferred over Premium because the budget constraint is binding.")
+    elif priority == "cheapest":
+        reasoning.append("Tradeoff applied: cost minimization is weighted above broader network access.")
+    elif priority == "best coverage":
+        reasoning.append("Tradeoff applied: coverage strength is weighted above lower upfront cost unless rules conflict.")
     if dependents_ratio > 0.5:
         risk_flags.append("dependents_cost_pressure")
         reasoning.append(
@@ -171,12 +179,15 @@ def scoring_tool(candidates: list[dict[str, Any]], customer_profile: dict[str, A
         if ranked:
             top = ranked[0]
             second = ranked[1]["score"] if len(ranked) > 1 else None
+            gap = (top["score"] - second) if second is not None else top["score"]
 
     if conflicting_constraints:
         standard_option = next((item for item in ranked if item["plan_name"] == "Standard"), None)
         if standard_option is not None:
             top = standard_option
             ranked = [standard_option] + [item for item in ranked if item["plan_name"] != "Standard"]
+            second = ranked[1]["score"] if len(ranked) > 1 else None
+            gap = (top["score"] - second) if second is not None else top["score"]
         confidence = "medium"
     else:
         confidence = _confidence_for_gap(
@@ -187,24 +198,34 @@ def scoring_tool(candidates: list[dict[str, Any]], customer_profile: dict[str, A
 
     if risk_flags and confidence == "high":
         confidence = "medium"
+    if second is not None and gap <= 3 and confidence in {"high", "medium-high"}:
+        confidence = "medium"
+        risk_flags.append("close_score_gap")
+        reasoning.append("Confidence reduced because the top two packages are separated by a narrow score gap.")
 
     risk_note = None
     if "budget_priority_conflict" in risk_flags:
         risk_note = "Low budget conflicts with best-coverage intent, so Standard is the safest compromise."
     elif "dependents_cost_pressure" in risk_flags:
         risk_note = "Dependents pressure raises the value of broader but still cost-aware coverage."
+    elif "close_score_gap" in risk_flags:
+        risk_note = "The top recommendation is only marginally ahead of the next option, so confidence is moderated."
 
     recommendation = {
         "plan_name": top["plan_name"],
         "network": top["network"],
         "price_range": top["price_range"],
     }
+    top_breakdown = "; ".join(top.get("score_breakdown", [])[:4]) or "No non-zero scoring factors were applied."
+    reasoning.append(f"Top score breakdown for {top['plan_name']}: {top_breakdown}.")
 
     return {
         "ranked": ranked,
         "recommendation": recommendation,
-        "reasoning": reasoning + [f"Top score: {top['score']} for {top['plan_name']}."],
+        "reasoning": reasoning + [f"Top score: {top['score']} for {top['plan_name']} (gap={gap})."],
         "confidence": confidence,
         "risk_note": risk_note,
         "flags": risk_flags,
+        "score_gap": gap,
+        "recommendation_reason": f"{top['plan_name']} ranked first after applying deterministic business-rule scoring.",
     }
